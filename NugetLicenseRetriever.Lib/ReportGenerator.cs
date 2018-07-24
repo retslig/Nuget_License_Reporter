@@ -119,7 +119,7 @@ namespace NugetLicenseRetriever.Lib
                 //TODO consider checking if url has changed?
                 if (cachedLicenses.ContainsKey(nugetId) && cachedLicenses[nugetId].LicenseUrl == licenseRow.LicenseUrl)
                 {
-                    licenseRow.License = cachedLicenses[nugetId].License;
+                    licenseRow = cachedLicenses[nugetId];
                 }
                 else
                 {

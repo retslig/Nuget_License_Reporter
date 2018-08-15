@@ -42,7 +42,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                                 var childProject = item.Object as Project;
                                 Debug.WriteLine("PojectItemName: " + item.Name + " ProjectItemGuid: " +
                                                 childProject.Kind);
-                                if (ProjectConstants.DotnetCoreProjectGuid == childProject.Kind)
+                                if (ProjectSettings.DotnetCoreProjectGuid == childProject.Kind)
                                 {
                                     allprojects.Add(childProject);
                                 }

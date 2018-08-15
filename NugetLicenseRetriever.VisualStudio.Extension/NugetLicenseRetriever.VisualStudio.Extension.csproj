@@ -62,7 +62,7 @@
       <DependentUpon>NuGetLicenseOptionsWindowControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="NugetLicenseReportGenerationCommand.cs" />
-    <Compile Include="ProjectConstants.cs" />
+    <Compile Include="ProjectSettings.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

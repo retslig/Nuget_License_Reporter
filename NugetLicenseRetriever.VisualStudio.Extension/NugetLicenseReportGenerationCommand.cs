@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.ComponentModelHost;
@@ -15,7 +14,6 @@ using System.Linq;
 using NugetLicenseRetriever.Lib;
 using NuGet.Common;
 using NuGet.VisualStudio;
-using Process = System.Diagnostics.Process;
 using Task = System.Threading.Tasks.Task;
 
 namespace NugetLicenseRetriever.VisualStudio.Extension
@@ -29,32 +27,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
         /// Command ID.
         /// </summary>
         public const int CommandId = 0x0100;
-
-        public string FullPath
-        {
-            get
-            {
-                var env = GetEnvAsync().Result;
-                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), env.RegistryRoot.Substring(9));
-            }
-        }
-
-        public string ReportFileName => Path.Combine(FullPath, "LicenseReport");
-
-        public string SpdxCacheFileName => Path.Combine(FullPath, "SpdxCache.json");
-
-        public string LicenseCacheFileName
-        {
-            get
-            {
-                var env = GetEnvAsync().Result;
-                return Path.Combine(FullPath, Path.GetFileName(env.Solution.FileName)?.Replace(".sln", "") + "_" + "LicenseCache.json");
-            }
-        }
-        
-        public const string CollectionName = "NugetLicenseRetriever.VisualStudio.Extension";
-        public const string SpdxLicenseDataKey = "SpdxLicenseVersion";
-
+       
         /// <summary>
         /// Command menu group (command set GUID).
         /// </summary>
@@ -81,16 +54,16 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
             commandService.AddCommand(menuItem);
         }
 
-        private void UpdateLicenseCache(Dictionary<string, LicenseRow> dictionary)
+        private void UpdateLicenseCache(Dictionary<string, LicenseRow> dictionary, string licenseCacheFileName)
         {
             //json is to large to fit in settings store so store file path in the store then save the json file.
             var json = JsonConvert.SerializeObject(dictionary, Formatting.Indented);
-            System.IO.File.WriteAllText(LicenseCacheFileName, json);
+            System.IO.File.WriteAllText(licenseCacheFileName, json);
         }
 
-        private Dictionary<string, LicenseRow> GetLicenseCache()
+        private Dictionary<string, LicenseRow> GetLicenseCache(string licenseCacheFileName)
         {
-            var fi = new FileInfo(LicenseCacheFileName);
+            var fi = new FileInfo(licenseCacheFileName);
             if (fi.Exists)
             {
                 var json = System.IO.File.ReadAllText(fi.FullName);
@@ -101,18 +74,11 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
         }
 
 
-        private void UpdateConfigurationSettingsStoreForSpdxLicenseDataKey(WritableSettingsStore store, SpdxLicenseData spdxLicenseData)
+        private void UpdateSpdxLicenseCache(SpdxLicenseData spdxLicenseData, string spdxCacheFileName)
         {
             //json is to large to fit in settings store so store file path in the store then save the json file.
             var json = JsonConvert.SerializeObject(spdxLicenseData,Formatting.Indented);
-            System.IO.File.WriteAllText(SpdxCacheFileName, json);
-
-            if (!store.CollectionExists(CollectionName))
-            {
-                store.CreateCollection(CollectionName);
-            }
-            
-            store.SetString(CollectionName, SpdxLicenseDataKey, spdxLicenseData.Version.ToString());
+            System.IO.File.WriteAllText(spdxCacheFileName, json);
         }
 
         /// <summary>
@@ -177,12 +143,36 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
 
             try
             {
+                var settingsManager = GetSettingsManagerAsync().Result;
+                var userSettingsStore = settingsManager.GetWritableSettingsStore(SettingsScope.UserSettings);
                 var logger = NullLogger.Instance;
-                var env = GetEnvAsync().Result;
-                var licenseCache = GetLicenseCache();
+                var spdxHelper = new SpdxLicenseHelper(logger);
+                var licenseCache = GetLicenseCache(ProjectSettings.LicenseCacheFileName);
                 var installerServices = GetIVsPackageInstallerServicesAsync().Result;
-                var reportGenerator = new ReportGenerator(ReportFileName, FileType.Csv);
+                ReportGeneratorOptions reportOptions;
+                
+                if (userSettingsStore.CollectionExists(ProjectSettings.CollectionName) &&
+                    userSettingsStore.PropertyExists(ProjectSettings.CollectionName,
+                        ProjectSettings.ReportGenerationOptionsDataKey))
+                {
+                    reportOptions = JsonConvert.DeserializeObject<ReportGeneratorOptions>(
+                        userSettingsStore.GetString(ProjectSettings.CollectionName, ProjectSettings.ReportGenerationOptionsDataKey)
+                    );
 
+                    reportOptions.Path = ProjectSettings.ReportFileName;
+                }
+                else
+                {
+                    reportOptions = new ReportGeneratorOptions
+                    {
+                        Path = ProjectSettings.ReportFileName,
+                        Columns = typeof(LicenseRow).GetProperties().Select(p=>p.Name).ToList(),
+                        FileType = FileType.Csv
+                    };
+                }
+
+                var reportGenerator = new ReportGenerator(reportOptions);
+                
                 //Remove old report
                 reportGenerator.RemoveReport();
 
@@ -195,44 +185,32 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 if (nugetPackageProjectDictionary != null && nugetPackageProjectDictionary.Any())
                 {
                     //Get spdx licenses
-                    var settingsManager = GetSettingsManagerAsync().Result;
-                    var userSettingsStore = settingsManager.GetWritableSettingsStore(SettingsScope.UserSettings);
                     SpdxLicenseData spdxLicenseData;
 
-                    if (userSettingsStore.CollectionExists(CollectionName) &&
-                        userSettingsStore.PropertyExists(CollectionName, SpdxLicenseDataKey))
+                    var fi = new FileInfo(ProjectSettings.SpdxCacheFileName);
+                    if (fi.Exists)
                     {
-                        var version = decimal.Parse(userSettingsStore.GetString(CollectionName, SpdxLicenseDataKey));
-                        var spdxHelper = new SpdxLicenseHelper(logger);
+                        var json = File.ReadAllText(ProjectSettings.SpdxCacheFileName);
+                        var cachedSpdxLicenseData = JsonConvert.DeserializeObject<SpdxLicenseData>(json);
                         spdxLicenseData = spdxHelper.GetLicencesAsync(false);
 
-                        if (version < spdxLicenseData.Version)
+                        if (cachedSpdxLicenseData.Version < spdxLicenseData.Version)
                         {
                             spdxLicenseData = spdxHelper.GetLicencesAsync(true);
-                            UpdateConfigurationSettingsStoreForSpdxLicenseDataKey(userSettingsStore, spdxLicenseData);
-                        }
-                        else
-                        {
-                            var fi = new FileInfo(SpdxCacheFileName);
-                            if (fi.Exists)
-                            {
-                                var json = System.IO.File.ReadAllText(SpdxCacheFileName);
-                                spdxLicenseData = JsonConvert.DeserializeObject<SpdxLicenseData>(json);
-                            }
+                            UpdateSpdxLicenseCache(spdxLicenseData, ProjectSettings.SpdxCacheFileName);
                         }
                     }
                     else
                     {
                         //Query data. 
                         //Todo: this will take a while so do something to alert user.
-                        var spdxHelper = new SpdxLicenseHelper(logger);
                         spdxLicenseData = spdxHelper.GetLicencesAsync(true);
-                        UpdateConfigurationSettingsStoreForSpdxLicenseDataKey(userSettingsStore, spdxLicenseData);
+                        UpdateSpdxLicenseCache(spdxLicenseData, ProjectSettings.SpdxCacheFileName);
                     }
 
-                    reportGenerator.Generate(nugetPackageProjectDictionary, licenseCache, spdxLicenseData, typeof(LicenseRow).GetProperties().ToList());
+                    reportGenerator.Generate(nugetPackageProjectDictionary, licenseCache, spdxLicenseData);
 
-                    UpdateLicenseCache(licenseCache);
+                    UpdateLicenseCache(licenseCache, ProjectSettings.LicenseCacheFileName);
                 }
                 else
                 {

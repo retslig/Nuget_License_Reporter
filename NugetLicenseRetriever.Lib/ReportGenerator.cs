@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using NuGet.Protocol;
 
@@ -9,15 +10,16 @@ namespace NugetLicenseRetriever.Lib
 {
     public class ReportGenerator
     {
-        private string _path;
-        private readonly FileType _type;
+        private ReportGeneratorOptions _options;
 
-        public ReportGenerator(string path, FileType type)
+        public ReportGenerator(ReportGeneratorOptions options)
         {
-            switch (_type)
+            _options = options;
+
+            switch (_options.FileType)
             {
                 case FileType.Csv:
-                    _path = path + ".csv";
+                    _options.Path = _options.Path + ".csv";
                     break;
                 case FileType.Html:
                     throw new NotImplementedException();
@@ -28,18 +30,16 @@ namespace NugetLicenseRetriever.Lib
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-            
-            _type = type;
         }
 
-        public void Generate(IDictionary<LocalPackageInfo, List<string>> packageList, Dictionary<string, LicenseRow> cachedLicenses, SpdxLicenseData spdxLicenseData, List<PropertyInfo> columns)
+        public void Generate(IDictionary<LocalPackageInfo, List<string>> packageList, Dictionary<string, LicenseRow> cachedLicenses, SpdxLicenseData spdxLicenseData)
         {
             var licenses = ToLicenseRows(packageList, cachedLicenses, spdxLicenseData);
 
-            switch (_type)
+            switch (_options.FileType)
             {
                 case FileType.Csv:
-                    using (var write = new StreamWriter(_path))
+                    using (var write = new StreamWriter(_options.Path))
                     {
                         using (var helper = new CsvHelper.CsvWriter(write))
                         {
@@ -47,17 +47,20 @@ namespace NugetLicenseRetriever.Lib
                             helper.Configuration.QuoteAllFields = true;
 
                             //Write headers
-                            foreach (var property in columns)
+                            foreach (var property in _options.Columns)
                             {
-                                helper.WriteField(property.Name, true);
+                                helper.WriteField(property, true);
                             }
                             helper.NextRecord();
+
+                            var properties = typeof(LicenseRow).GetProperties().ToList();
 
                             //Write values
                             foreach (var license in licenses)
                             {
-                                foreach (var property in columns)
+                                foreach (var propertyName in _options.Columns)
                                 {
+                                    var property = properties.First(p => p.Name == propertyName);
                                     var value = property.GetValue(license.Value, null);
                                     helper.WriteField(value?.ToString(), true);
                                 }
@@ -77,7 +80,7 @@ namespace NugetLicenseRetriever.Lib
             }
 
             var proc = new Process();
-            var finfo = new FileInfo(_path);
+            var finfo = new FileInfo(_options.Path);
             if (finfo.Exists)
             {
                 proc.StartInfo.FileName = finfo.FullName;
@@ -87,7 +90,7 @@ namespace NugetLicenseRetriever.Lib
 
         public void RemoveReport()
         {
-            var fi = new FileInfo(_path);
+            var fi = new FileInfo(_options.Path);
             if (fi.Exists)
             {
                 fi.Delete();

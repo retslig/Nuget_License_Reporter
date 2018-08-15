@@ -3,6 +3,7 @@ using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,11 +68,17 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
         /// <returns>A task representing the async work of package initialization, or an already completed task if there is none. Do not return null from this method.</returns>
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
+            var env = this.GetServiceAsync(typeof(EnvDTE.DTE)).Result as EnvDTE.DTE;
+            string FullPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), env.RegistryRoot.Substring(9));
+            ProjectSettings.ReportFileName = Path.Combine(FullPath, "LicenseReport");
+            ProjectSettings.SpdxCacheFileName = Path.Combine(FullPath, "SpdxCache.json");
+            ProjectSettings.LicenseCacheFileName = Path.Combine(FullPath, Path.GetFileName(env.Solution.FileName)?.Replace(".sln", "") + "_" + "LicenseCache.json");
+
             // When initialized asynchronously, the current thread may be a background thread at this point.
             // Do any initialization that requires the UI thread after switching to the UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             await NugetLicenseReportGenerationCommand.InitializeAsync(this);
-            await NugetLicenseRetriever.VisualStudio.Extension.NuGetLicenseOptionsWindowCommand.InitializeAsync(this);
+            await NuGetLicenseOptionsWindowCommand.InitializeAsync(this);
         }
 
         #endregion

@@ -60,7 +60,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
             reportGeneratorOptions.Path = ProjectSettings.ReportFileName;
 
             var reportColunms = typeof(LicenseRow).GetProperties().ToList();
-            int startingRow = 6;
+            int startingRow = 1;
 
             foreach (var column in reportColunms)
             {
@@ -72,7 +72,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                     IsChecked = reportGeneratorOptions?.Columns?.Any(p => p == column.Name)
                 };
 
-                Grid.SetColumn(checkbox, 0);
+                Grid.SetColumn(checkbox, 2);
                 Grid.SetRow(checkbox, startingRow);
                 startingRow++;
                 ReportColumnsGrid.Children.Add(checkbox);

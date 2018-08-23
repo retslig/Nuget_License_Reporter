@@ -137,7 +137,12 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
         /// </summary>
         /// <param name="sender">Event sender.</param>
         /// <param name="e">Event args.</param>
-        private void Execute(object sender, EventArgs e)
+        private async void Execute(object sender, EventArgs e)
+        {
+            await GenerateReportAsync();
+        }
+
+        private Task GenerateReportAsync()
         {
             var log = GetActivityLoggerAsync().Result;
 
@@ -147,10 +152,11 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 var userSettingsStore = settingsManager.GetWritableSettingsStore(SettingsScope.UserSettings);
                 var logger = NullLogger.Instance;
                 var spdxHelper = new SpdxLicenseHelper(logger);
+                var env = GetEnvAsync().Result;
                 var licenseCache = GetLicenseCache(ProjectSettings.LicenseCacheFileName);
                 var installerServices = GetIVsPackageInstallerServicesAsync().Result;
                 ReportGeneratorOptions reportOptions;
-                
+
                 if (userSettingsStore.CollectionExists(ProjectSettings.CollectionName) &&
                     userSettingsStore.PropertyExists(ProjectSettings.CollectionName,
                         ProjectSettings.ReportGenerationOptionsDataKey))
@@ -166,13 +172,13 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                     reportOptions = new ReportGeneratorOptions
                     {
                         Path = ProjectSettings.ReportFileName,
-                        Columns = typeof(LicenseRow).GetProperties().Select(p=>p.Name).ToList(),
+                        Columns = typeof(LicenseRow).GetProperties().Select(p => p.Name).ToList(),
                         FileType = FileType.Csv
                     };
                 }
 
                 var reportGenerator = new ReportGenerator(reportOptions);
-                
+
                 //Remove old report
                 reportGenerator.RemoveReport();
 
@@ -217,6 +223,19 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                     Debug.WriteLine("No installed Nuget packages.");
                 }
             }
+            catch (NuGet.Protocol.Core.Types.FatalProtocolException exception)
+            {
+                Debug.Write(exception.Message);
+#pragma warning disable VSTHRD010 // Invoke single-threaded types on Main thread
+                log.LogEntry(
+#pragma warning restore VSTHRD010 // Invoke single-threaded types on Main thread
+                    (UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR,
+                    this.ToString(),
+                    exception.Message + " This may be caused by not doing a restore on your Nuget packages."
+                );
+
+                throw;
+            }
             catch (Exception exception)
             {
                 Debug.Write(exception.Message);
@@ -243,6 +262,8 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 OLEMSGICON.OLEMSGICON_INFO,
                 OLEMSGBUTTON.OLEMSGBUTTON_OK,
                 OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
+
+            return Task.CompletedTask;
         }
     }
 }

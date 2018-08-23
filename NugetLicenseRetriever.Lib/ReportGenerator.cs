@@ -102,7 +102,7 @@ namespace NugetLicenseRetriever.Lib
             var licenseResolver = new LicenseResolver(spdxLicenseData, "", "");
 
             var rows = new Dictionary<string, LicenseRow>();
-            foreach (var package in packageList)
+            foreach (var package in packageList.OrderBy(p=>p.Key.Nuspec.GetTitle()))
             {
                 var nugetId = package.Key.Nuspec.GetId() + " : " + package.Key.Nuspec.GetVersion().Version;
                 var licenseRow = new LicenseRow
@@ -110,12 +110,14 @@ namespace NugetLicenseRetriever.Lib
                     Id = nugetId,
                     Component = !string.IsNullOrEmpty(package.Key.Nuspec.GetTitle()) ? package.Key.Nuspec.GetTitle() : package.Key.Nuspec.GetId(),
                     Project = string.Join(",", package.Value),
-                    LicenseUrl = package.Key.Nuspec.GetLicenseUrl(),
+                    Author = package.Key.Nuspec.GetAuthors(),
+                    LicenseUrl = !string.IsNullOrEmpty(package.Key.Nuspec.GetLicenseUrl()) ? package.Key.Nuspec.GetLicenseUrl() : package.Key.Nuspec.GetProjectUrl(),
                     License = "Unknown",
                     Version = package.Key.Nuspec.GetVersion().Version.ToString(),
                     LicenseText = "",
                     SpdxLicenseId = "",
-                    AccuracyOfLicense = AccuracyOfLicense.NotFound
+                    AccuracyOfLicense = AccuracyOfLicense.NotFound,
+                    RequireAcceptance = package.Key.Nuspec.GetRequireLicenseAcceptance()
                 };
 
                 //Check cache first

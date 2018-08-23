@@ -10,6 +10,8 @@
         public string LicenseUrl { get; set; }
         public string SpdxLicenseId { get; set; }
         public string LicenseText { get; set; }
+        public bool RequireAcceptance { get; set; }
         public AccuracyOfLicense AccuracyOfLicense { get; set; }
+        public string Author { get; set; }
     }
 }

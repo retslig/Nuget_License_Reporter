@@ -61,8 +61,8 @@ namespace NugetLicenseRetriever.Lib
                     Id = "Unknown",
                     Name = "Unknown",
                     KnownAliasUrls = new List<string> {uri.AbsoluteUri},
-                    StandardLicenseTemplate = content,
-                    Text = content,
+                    StandardLicenseTemplate = content.Replace("\r", "").Replace("\n", ""),
+                    Text = content.Replace("\r", "").Replace("\n", ""),
                     SpdxDetailsUrl = "",
                     ReferenceNumber = "-1",
                     IsOsiApproved = false,
@@ -138,7 +138,10 @@ namespace NugetLicenseRetriever.Lib
                     jtoken = JObject.Parse(response.Item2);
                     var spdxid = jtoken["license"]["spdx_id"].ToString();
 
-                    return new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.ExactMatchFound, _spdxLicenseData.Licenses.First(p => p.Id == spdxid));
+                    if (!string.IsNullOrEmpty(spdxid))
+                    {
+                        return new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.ExactMatchFound, _spdxLicenseData.Licenses.First(p => p.Id == spdxid));
+                    }
                 }
                 catch (Exception e)
                 {

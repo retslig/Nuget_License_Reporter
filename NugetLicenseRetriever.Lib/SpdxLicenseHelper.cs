@@ -166,6 +166,25 @@ namespace NugetLicenseRetriever.Lib
                 ReferenceNumber = "-1"
             });
 
+            //Copyright (c) 2015-2016 Xamarin, Inc.
+            //Copyright(c) 2017 - 2018 Microsoft Corporation.
+            //https://go.microsoft.com/fwlink/?linkid=868514
+            licenses.Licenses.Add(new SpdxLicense
+            {
+                Id = "Xamarin, Inc.  Microsoft Corporation",
+                Name = "Xamarin, Inc.  Microsoft Corporation",
+                KnownAliasUrls = new List<string>
+                {
+                    "https://go.microsoft.com/fwlink/?linkid=868514"
+                },
+                StandardLicenseTemplate = "",
+                Text = "",
+                SpdxDetailsUrl = "",
+                IsDeprecatedLicenseId = false,
+                IsOsiApproved = false,
+                ReferenceNumber = "-1"
+            });
+
             return licenses;
         }
 

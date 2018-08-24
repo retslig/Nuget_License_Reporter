@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
+using System.Threading.Tasks;
 using NuGet.Protocol;
 
 namespace NugetLicenseRetriever.Lib
@@ -32,9 +32,9 @@ namespace NugetLicenseRetriever.Lib
             }
         }
 
-        public void Generate(IDictionary<LocalPackageInfo, List<string>> packageList, Dictionary<string, LicenseRow> cachedLicenses, SpdxLicenseData spdxLicenseData)
+        public async Task GenerateAsync(IDictionary<LocalPackageInfo, List<string>> packageList, Dictionary<string, LicenseRow> cachedLicenses, SpdxLicenseData spdxLicenseData)
         {
-            var licenses = ToLicenseRows(packageList, cachedLicenses, spdxLicenseData);
+            var licenses = (await ToLicenseRowsAsync(packageList, cachedLicenses, spdxLicenseData)).OrderBy(p=>p.Value.Id);
 
             switch (_options.FileType)
             {
@@ -97,7 +97,7 @@ namespace NugetLicenseRetriever.Lib
             }
         }
 
-        private Dictionary<string, LicenseRow> ToLicenseRows(IDictionary<LocalPackageInfo, List<string>> packageList, Dictionary<string, LicenseRow> cachedLicenses, SpdxLicenseData spdxLicenseData)
+        private async Task<Dictionary<string, LicenseRow>> ToLicenseRowsAsync(IDictionary<LocalPackageInfo, List<string>> packageList, Dictionary<string, LicenseRow> cachedLicenses, SpdxLicenseData spdxLicenseData)
         {
             var licenseResolver = new LicenseResolver(spdxLicenseData, "", "");
 
@@ -131,7 +131,7 @@ namespace NugetLicenseRetriever.Lib
                     //Go determine license.
                     if (!string.IsNullOrEmpty(licenseRow.LicenseUrl))
                     {
-                        var licenseTuple = licenseResolver.Resolve(new Uri(licenseRow.LicenseUrl));
+                        var licenseTuple = await licenseResolver.ResolveAsync(new Uri(licenseRow.LicenseUrl));
                         if (licenseTuple?.Item2 != null)
                         {
                             licenseRow.License = licenseTuple.Item2.Name;

@@ -1,17 +1,9 @@
 ﻿using System;
-using System.ComponentModel.Design;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.Win32;
 using Task = System.Threading.Tasks.Task;
 
 namespace NugetLicenseRetriever.VisualStudio.Extension
@@ -68,11 +60,11 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
         /// <returns>A task representing the async work of package initialization, or an already completed task if there is none. Do not return null from this method.</returns>
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
-            var env = this.GetServiceAsync(typeof(EnvDTE.DTE)).Result as EnvDTE.DTE;
-            string FullPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), env.RegistryRoot.Substring(9));
-            ProjectSettings.ReportFileName = Path.Combine(FullPath, "LicenseReport");
-            ProjectSettings.SpdxCacheFileName = Path.Combine(FullPath, "SpdxCache.json");
-            ProjectSettings.LicenseCacheFileName = Path.Combine(FullPath, Path.GetFileName(env.Solution.FileName)?.Replace(".sln", "") + "_" + "LicenseCache.json");
+            var env = await this.GetServiceAsync(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
+            string fullPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), env.RegistryRoot.Substring(9));
+            ProjectSettings.ReportFileName = Path.Combine(fullPath, "LicenseReport");
+            ProjectSettings.SpdxCacheFileName = Path.Combine(fullPath, "SpdxCache.json");
+            ProjectSettings.LicenseCacheFileName = Path.Combine(fullPath, Path.GetFileName(env.Solution.FileName)?.Replace(".sln", "") + "_" + "LicenseCache.json");
 
             // When initialized asynchronously, the current thread may be a background thread at this point.
             // Do any initialization that requires the UI thread after switching to the UI thread.

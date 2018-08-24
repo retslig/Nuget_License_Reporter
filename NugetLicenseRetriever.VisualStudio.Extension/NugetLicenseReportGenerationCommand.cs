@@ -36,7 +36,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
         /// <summary>
         /// VS Package that provides this command, not null.
         /// </summary>
-        private readonly AsyncPackage package;
+        private readonly AsyncPackage _package;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NugetLicenseReportGenerationCommand"/> class.
@@ -46,7 +46,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
         /// <param name="commandService">Command service to add command to, not null.</param>
         private NugetLicenseReportGenerationCommand(AsyncPackage package, OleMenuCommandService commandService)
         {
-            this.package = package ?? throw new ArgumentNullException(nameof(package));
+            this._package = package ?? throw new ArgumentNullException(nameof(package));
             commandService = commandService ?? throw new ArgumentNullException(nameof(commandService));
 
             var menuCommandId = new CommandID(CommandSet, CommandId);
@@ -54,31 +54,33 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
             commandService.AddCommand(menuItem);
         }
 
-        private void UpdateLicenseCache(Dictionary<string, LicenseRow> dictionary, string licenseCacheFileName)
+        private Task UpdateLicenseCacheAsync(Dictionary<string, LicenseRow> dictionary, string licenseCacheFileName)
         {
             //json is to large to fit in settings store so store file path in the store then save the json file.
             var json = JsonConvert.SerializeObject(dictionary, Formatting.Indented);
             System.IO.File.WriteAllText(licenseCacheFileName, json);
+            return Task.CompletedTask;
         }
 
-        private Dictionary<string, LicenseRow> GetLicenseCache(string licenseCacheFileName)
+        private Task<Dictionary<string, LicenseRow>> GetLicenseCacheAsync(string licenseCacheFileName)
         {
             var fi = new FileInfo(licenseCacheFileName);
             if (fi.Exists)
             {
                 var json = System.IO.File.ReadAllText(fi.FullName);
-                return JsonConvert.DeserializeObject<Dictionary<string, LicenseRow>>(json);
+                return Task.FromResult(JsonConvert.DeserializeObject<Dictionary<string, LicenseRow>>(json));
             }
             
-            return new Dictionary<string, LicenseRow>();
+            return Task.FromResult(new Dictionary<string, LicenseRow>());
         }
 
 
-        private void UpdateSpdxLicenseCache(SpdxLicenseData spdxLicenseData, string spdxCacheFileName)
+        private Task UpdateSpdxLicenseCacheAsync(SpdxLicenseData spdxLicenseData, string spdxCacheFileName)
         {
             //json is to large to fit in settings store so store file path in the store then save the json file.
             var json = JsonConvert.SerializeObject(spdxLicenseData,Formatting.Indented);
             System.IO.File.WriteAllText(spdxCacheFileName, json);
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -107,13 +109,13 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
 
         private async Task<IVsPackageInstallerServices> GetIVsPackageInstallerServicesAsync()
         {
-            var componentModel = this.package.GetServiceAsync(typeof(SComponentModel)).Result as IComponentModel;
+            var componentModel = await this._package.GetServiceAsync(typeof(SComponentModel)) as IComponentModel;
             return componentModel?.GetService<IVsPackageInstallerServices>();
         }
 
         private async Task<EnvDTE.DTE> GetEnvAsync()
         {
-            return this.package.GetServiceAsync(typeof(EnvDTE.DTE)).Result as EnvDTE.DTE;
+            return await this._package.GetServiceAsync(typeof(EnvDTE.DTE)) as EnvDTE.DTE;
         }
 
         /// <summary>
@@ -142,19 +144,26 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
             await GenerateReportAsync();
         }
 
-        private Task GenerateReportAsync()
+        private async Task GenerateReportAsync()
         {
-            var log = GetActivityLoggerAsync().Result;
+            var log = await GetActivityLoggerAsync();
+#pragma warning disable VSTHRD010 // Invoke single-threaded types on Main thread
+            log.LogEntry(
+#pragma warning restore VSTHRD010 // Invoke single-threaded types on Main thread
+                (UInt32) __ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION,
+                this.ToString(),
+                "GenerateReportAsync was invoked"
+            );
 
             try
             {
-                var settingsManager = GetSettingsManagerAsync().Result;
+                var settingsManager = await GetSettingsManagerAsync();
                 var userSettingsStore = settingsManager.GetWritableSettingsStore(SettingsScope.UserSettings);
                 var logger = NullLogger.Instance;
                 var spdxHelper = new SpdxLicenseHelper(logger);
-                var env = GetEnvAsync().Result;
-                var licenseCache = GetLicenseCache(ProjectSettings.LicenseCacheFileName);
-                var installerServices = GetIVsPackageInstallerServicesAsync().Result;
+                var env = await GetEnvAsync();
+                var licenseCache = await GetLicenseCacheAsync(ProjectSettings.LicenseCacheFileName);
+                var installerServices = await GetIVsPackageInstallerServicesAsync();
                 ReportGeneratorOptions reportOptions;
 
                 if (userSettingsStore.CollectionExists(ProjectSettings.CollectionName) &&
@@ -162,7 +171,10 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                         ProjectSettings.ReportGenerationOptionsDataKey))
                 {
                     reportOptions = JsonConvert.DeserializeObject<ReportGeneratorOptions>(
-                        userSettingsStore.GetString(ProjectSettings.CollectionName, ProjectSettings.ReportGenerationOptionsDataKey)
+                        userSettingsStore.GetString(
+                            ProjectSettings.CollectionName,
+                            ProjectSettings.ReportGenerationOptionsDataKey
+                        )
                     );
 
                     reportOptions.Path = ProjectSettings.ReportFileName;
@@ -198,25 +210,24 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                     {
                         var json = File.ReadAllText(ProjectSettings.SpdxCacheFileName);
                         var cachedSpdxLicenseData = JsonConvert.DeserializeObject<SpdxLicenseData>(json);
-                        spdxLicenseData = spdxHelper.GetLicencesAsync(false);
+                        spdxLicenseData = await spdxHelper.GetLicencesAsync(false);
 
                         if (cachedSpdxLicenseData.Version < spdxLicenseData.Version)
                         {
-                            spdxLicenseData = spdxHelper.GetLicencesAsync(true);
-                            UpdateSpdxLicenseCache(spdxLicenseData, ProjectSettings.SpdxCacheFileName);
+                            spdxLicenseData = await spdxHelper.GetLicencesAsync(true);
+                            await UpdateSpdxLicenseCacheAsync(spdxLicenseData, ProjectSettings.SpdxCacheFileName);
                         }
                     }
                     else
                     {
                         //Query data. 
                         //Todo: this will take a while so do something to alert user.
-                        spdxLicenseData = spdxHelper.GetLicencesAsync(true);
-                        UpdateSpdxLicenseCache(spdxLicenseData, ProjectSettings.SpdxCacheFileName);
+                        spdxLicenseData = await spdxHelper.GetLicencesAsync(true);
+                        await UpdateSpdxLicenseCacheAsync(spdxLicenseData, ProjectSettings.SpdxCacheFileName);
                     }
 
-                    reportGenerator.Generate(nugetPackageProjectDictionary, licenseCache, spdxLicenseData);
-
-                    UpdateLicenseCache(licenseCache, ProjectSettings.LicenseCacheFileName);
+                    await reportGenerator.GenerateAsync(nugetPackageProjectDictionary, licenseCache, spdxLicenseData);
+                    await UpdateLicenseCacheAsync(licenseCache, ProjectSettings.LicenseCacheFileName);
                 }
                 else
                 {
@@ -256,14 +267,12 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
 
             // Show a message box to prove we were here
             VsShellUtilities.ShowMessageBox(
-                this.package,
+                this._package,
                 message,
                 title,
                 OLEMSGICON.OLEMSGICON_INFO,
                 OLEMSGBUTTON.OLEMSGBUTTON_OK,
                 OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
-
-            return Task.CompletedTask;
         }
     }
 }

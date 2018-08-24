@@ -35,18 +35,18 @@ namespace NugetLicenseRetriever.Lib
         /// </summary>
         /// <param name="getIndividualLicenseText"></param>
         /// <returns>SpdxLicenseData</returns>
-        public SpdxLicenseData GetLicencesAsync(bool getIndividualLicenseText)
+        public async Task<SpdxLicenseData> GetLicencesAsync(bool getIndividualLicenseText)
         {
             var licenses = new SpdxLicenseData();
             try
             {
-                var json = GetHttpAsync(_url);
+                var json = await GetHttpAsync(_url);
                 if (string.IsNullOrEmpty(json))
                 {
                     throw new Exception($"No data returned from {_url}.");
                 }
 
-                licenses = LoadLicenses(json, getIndividualLicenseText);
+                licenses = await LoadLicensesAsync(json, getIndividualLicenseText);
             }
             catch (Exception ex)
             {
@@ -193,20 +193,19 @@ namespace NugetLicenseRetriever.Lib
         /// </summary>
         /// <param name="url"></param>
         /// <returns>string</returns>
-        private string GetHttpAsync(string url)
+        private async Task<string> GetHttpAsync(string url)
         {
             using (var client = new HttpClient())
             {
                 //Flip over to different task so dont block current UI thread.
-                var task = Task.Run(() => client.GetAsync(url));
-                var res = task.Result;
-                if (res.IsSuccessStatusCode)
+                var results = await Task.Run(() => client.GetAsync(url));
+                if (results.IsSuccessStatusCode)
                 {
                     //Flip over to different task so dont block current UI thread.
-                    return Task.Run(() => res.Content.ReadAsStringAsync()).Result;
+                    return await Task.Run(() => results.Content.ReadAsStringAsync());
                 }
 
-                throw new Exception($"Response from '{url}' was not successful. ({res.ReasonPhrase})");
+                throw new Exception($"Response from '{url}' was not successful. ({results.ReasonPhrase})");
             }
         }
 
@@ -215,7 +214,7 @@ namespace NugetLicenseRetriever.Lib
         /// </summary>
         /// <param name="json"></param>
         /// <param name="getIndividualLicenseText"></param>
-        private SpdxLicenseData LoadLicenses(string json, bool getIndividualLicenseText)
+        private async Task<SpdxLicenseData> LoadLicensesAsync(string json, bool getIndividualLicenseText)
         {
             var licenseData = JsonConvert.DeserializeObject<SpdxLicenseData>(json);
 
@@ -223,7 +222,7 @@ namespace NugetLicenseRetriever.Lib
             {
                 foreach (var license in licenseData.Licenses)
                 {
-                    var tempJson = GetHttpAsync(license.SpdxDetailsUrl);
+                    var tempJson = await GetHttpAsync(license.SpdxDetailsUrl);
                     var jtoken = JObject.Parse(tempJson);
                     license.Text = jtoken["licenseText"].ToString();
                     license.StandardLicenseTemplate = jtoken["standardLicenseTemplate"].ToString();

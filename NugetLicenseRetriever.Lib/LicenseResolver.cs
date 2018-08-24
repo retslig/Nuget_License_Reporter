@@ -32,27 +32,27 @@ namespace NugetLicenseRetriever.Lib
         /// </summary>
         /// <param name="uri"></param>
         /// <returns></returns>
-        public Tuple<AccuracyOfLicense, SpdxLicense> Resolve(Uri uri)
+        public async Task<Tuple<AccuracyOfLicense, SpdxLicense>> ResolveAsync(Uri uri)
         {
             //Try Github API if that returns nothing try default type.
             if (uri.AbsoluteUri.ToLower().Contains("github"))
             {
-                var license = DetermineGitHubLicense(uri);
+                var license = await DetermineGitHubLicenseAsync(uri);
                 if (license?.Item2 == null || license.Item2.Id == "Unknown")
                 {
-                    license = DetermineLicense(uri, license?.Item2?.Text);
+                    license = await DetermineLicenseAsync(uri, license?.Item2?.Text);
                 }
                 return license;
             }
 
             string url = uri.AbsoluteUri;
-            var response = GetHttp(url);
+            var response = await GetHttpAsync(url);
 
             //Grab license text and do a search.
-            return DetermineLicense(uri, response?.Item2);
+            return await DetermineLicenseAsync(uri, response?.Item2);
         }
 
-        private Tuple<AccuracyOfLicense, SpdxLicense> DetermineLicense(Uri uri, string content)
+        private Task<Tuple<AccuracyOfLicense, SpdxLicense>> DetermineLicenseAsync(Uri uri, string content)
         {
             var result = new Tuple<AccuracyOfLicense, SpdxLicense>(
                 AccuracyOfLicense.NotFound,
@@ -77,13 +77,13 @@ namespace NugetLicenseRetriever.Lib
                     if (uri.AbsoluteUri.Contains(item.Id))
                     {
                         //Chance of being the correct license: High
-                        return new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.High, item);
+                        return Task.FromResult(new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.High, item));
                     }
 
                     if (item.KnownAliasUrls.Contains(uri.AbsoluteUri))
                     {
                         //Chance of being the correct license: Pretty Likely
-                        return new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.VeryLikely, item);
+                        return Task.FromResult(new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.VeryLikely, item));
                     }
 
                     if (item.KnownAliasUrls.Any(content.Contains))
@@ -108,15 +108,15 @@ namespace NugetLicenseRetriever.Lib
                 }
             }
 
-            return result;
+            return Task.FromResult(result);
         }
 
-        private Tuple<AccuracyOfLicense, SpdxLicense> DetermineGitHubLicense(Uri uri)
+        private async Task<Tuple<AccuracyOfLicense, SpdxLicense>> DetermineGitHubLicenseAsync(Uri uri)
         {
             string[] matches = Regex.Split(uri.AbsolutePath, "/");
             if (matches.Any())
             {
-                JObject jtoken = new JObject();
+                var jtoken = new JObject();
                 try
                 {
                     var url = $"https://api.github.com/repos/{matches[1]}/{matches[2]}/license";
@@ -124,7 +124,7 @@ namespace NugetLicenseRetriever.Lib
                     //Git hub license API:https://developer.github.com/v3/licenses/
                     //GET /repos/:owner/:repo/license
                     //Headers => Accept: application/vnd.github.v3+json
-                    var response = GetHttp(
+                    var response = await GetHttpAsync(
                         url,
                         new KeyValuePair<string, string>("Accept", "application/vnd.github.v3+json"),
                         _authHeader
@@ -176,7 +176,7 @@ namespace NugetLicenseRetriever.Lib
         /// <param name="header"></param>
         /// <param name="authorization"></param>
         /// <returns>string</returns>
-        private Tuple<bool, string> GetHttp(string url, KeyValuePair<string, string>? header = null, System.Net.Http.Headers.AuthenticationHeaderValue authorization = null)
+        private async Task<Tuple<bool, string>> GetHttpAsync(string url, KeyValuePair<string, string>? header = null, System.Net.Http.Headers.AuthenticationHeaderValue authorization = null)
         {
             try
             {
@@ -195,12 +195,11 @@ namespace NugetLicenseRetriever.Lib
                     }
                     
                     //Flip over to different task so dont block current UI thread.
-                    var task = Task.Run(() => client.GetAsync(url));
-                    var res = task.Result;
+                    var result = await Task.Run(() => client.GetAsync(url));
                     //Flip over to different task so dont block current UI thread.
-                    var content = Task.Run(() => res.Content.ReadAsStringAsync()).Result;
+                    var content = await Task.Run(() => result.Content.ReadAsStringAsync());
 
-                    if (res.IsSuccessStatusCode)
+                    if (result.IsSuccessStatusCode)
                     {
                         return new Tuple<bool, string>(true, content);
                     }
@@ -213,7 +212,7 @@ namespace NugetLicenseRetriever.Lib
                         message = obj["message"].ToString();
                     }
 
-                    return new Tuple<bool, string>(false, $"Response from '{url}' was not successful. ({res.ReasonPhrase}) " + message);
+                    return new Tuple<bool, string>(false, $"Response from '{url}' was not successful. ({result.ReasonPhrase}) " + message);
                 }
             }
             catch (Exception e)

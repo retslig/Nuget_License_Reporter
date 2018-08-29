@@ -146,10 +146,12 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
 
         private async Task GenerateReportAsync()
         {
+            var logtype = __ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION;
+            var messageType = OLEMSGICON.OLEMSGICON_INFO;
+            string message = "";
+            string title = "Nuget License Report";
             var log = await GetActivityLoggerAsync();
-#pragma warning disable VSTHRD010 // Invoke single-threaded types on Main thread
             log.LogEntry(
-#pragma warning restore VSTHRD010 // Invoke single-threaded types on Main thread
                 (UInt32) __ACTIVITYLOG_ENTRYTYPE.ALE_INFORMATION,
                 this.ToString(),
                 "GenerateReportAsync was invoked"
@@ -197,7 +199,8 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 //Get nuget packages
                 var helper = new NugetHelper(logger);
                 //Todo: add more file types support.
-                var nugetPackageProjectDictionary = helper.GetNugetPackageProjectDictionary(installerServices, env?.Solution);
+                var nugetPackageProjectDictionary =
+                    helper.GetNugetPackageProjectDictionary(installerServices, env?.Solution);
 
                 //First check if any NuGet packages are installed.
                 if (nugetPackageProjectDictionary != null && nugetPackageProjectDictionary.Any())
@@ -228,49 +231,43 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
 
                     await reportGenerator.GenerateAsync(nugetPackageProjectDictionary, licenseCache, spdxLicenseData);
                     await UpdateLicenseCacheAsync(licenseCache, ProjectSettings.LicenseCacheFileName);
+
+                    message = "Nuget Package License Report Generated";
                 }
                 else
                 {
-                    Debug.WriteLine("No installed Nuget packages.");
+                    message = "No installed Nuget packages were found report failed to generate.";
                 }
             }
             catch (NuGet.Protocol.Core.Types.FatalProtocolException exception)
             {
-                Debug.Write(exception.Message);
-#pragma warning disable VSTHRD010 // Invoke single-threaded types on Main thread
-                log.LogEntry(
-#pragma warning restore VSTHRD010 // Invoke single-threaded types on Main thread
-                    (UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR,
-                    this.ToString(),
-                    exception.Message + " This may be caused by not doing a restore on your Nuget packages."
-                );
-
-                throw;
+                message = exception.Message + " This may be caused by not doing a restore on your Nuget packages.";
+                logtype = __ACTIVITYLOG_ENTRYTYPE.ALE_ERROR;
+                messageType = OLEMSGICON.OLEMSGICON_WARNING;
             }
             catch (Exception exception)
             {
-                Debug.Write(exception.Message);
-#pragma warning disable VSTHRD010 // Invoke single-threaded types on Main thread
-                log.LogEntry(
-#pragma warning restore VSTHRD010 // Invoke single-threaded types on Main thread
-                    (UInt32)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR,
-                    this.ToString(),
-                    exception.Message
-                );
-
-                throw;
+                message = exception.Message;
+                logtype = __ACTIVITYLOG_ENTRYTYPE.ALE_ERROR;
+                messageType = OLEMSGICON.OLEMSGICON_WARNING;
             }
 
             ThreadHelper.ThrowIfNotOnUIThread();
-            string message = "Nuget Package License Report Generated";
-            string title = "Nuget License Report";
 
+            log.LogEntry(
+                (UInt32)logtype,
+                this.ToString(),
+                message
+            );
+
+            Debug.WriteLine(message);
+            
             // Show a message box to prove we were here
             VsShellUtilities.ShowMessageBox(
                 this._package,
                 message,
                 title,
-                OLEMSGICON.OLEMSGICON_INFO,
+                messageType,
                 OLEMSGBUTTON.OLEMSGBUTTON_OK,
                 OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
         }

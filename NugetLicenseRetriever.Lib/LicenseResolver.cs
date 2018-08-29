@@ -113,10 +113,11 @@ namespace NugetLicenseRetriever.Lib
 
         private async Task<Tuple<AccuracyOfLicense, SpdxLicense>> DetermineGitHubLicenseAsync(Uri uri)
         {
+            var jtoken = new JObject();
+            string content = "";
             string[] matches = Regex.Split(uri.AbsolutePath, "/");
             if (matches.Any())
             {
-                var jtoken = new JObject();
                 try
                 {
                     var url = $"https://api.github.com/repos/{matches[1]}/{matches[2]}/license";
@@ -147,7 +148,7 @@ namespace NugetLicenseRetriever.Lib
                 {
                     Debug.WriteLine(e.Message);
 
-                    var content = Encoding.UTF8.GetString(Convert.FromBase64String(jtoken["content"].ToString()));
+                    content = Encoding.UTF8.GetString(Convert.FromBase64String(jtoken["content"].ToString()));
 
                     return new Tuple<AccuracyOfLicense, SpdxLicense>(
                         AccuracyOfLicense.NotFound, 
@@ -166,7 +167,22 @@ namespace NugetLicenseRetriever.Lib
                 }
             }
 
-            return new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.NotFound, null);
+            content = Encoding.UTF8.GetString(Convert.FromBase64String(jtoken["content"].ToString()));
+
+            return new Tuple<AccuracyOfLicense, SpdxLicense>(
+                AccuracyOfLicense.NotFound,
+                new SpdxLicense
+                {
+                    Id = "Unknown",
+                    Name = "Unknown",
+                    KnownAliasUrls = new List<string> { jtoken["download_url"].ToString() },
+                    StandardLicenseTemplate = content,
+                    Text = content,
+                    SpdxDetailsUrl = "",
+                    ReferenceNumber = "-1",
+                    IsOsiApproved = false,
+                    IsDeprecatedLicenseId = false
+                });
         }
 
         /// <summary>

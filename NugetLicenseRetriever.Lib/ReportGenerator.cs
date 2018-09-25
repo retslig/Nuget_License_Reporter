@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using NuGet.Frameworks;
 using NuGet.Protocol;
 
 namespace NugetLicenseRetriever.Lib
@@ -32,7 +33,7 @@ namespace NugetLicenseRetriever.Lib
             }
         }
 
-        public async Task GenerateAsync(IDictionary<LocalPackageInfo, List<string>> packageList, Dictionary<string, LicenseRow> cachedLicenses, SpdxLicenseData spdxLicenseData)
+        public async Task GenerateAsync(IEnumerable<PackageInfo> packageList, Dictionary<string, LicenseRow> cachedLicenses, SpdxLicenseData spdxLicenseData)
         {
             var licenses = (await ToLicenseRowsAsync(packageList, cachedLicenses, spdxLicenseData)).OrderBy(p=>p.Value.Id);
 
@@ -97,27 +98,27 @@ namespace NugetLicenseRetriever.Lib
             }
         }
 
-        private async Task<Dictionary<string, LicenseRow>> ToLicenseRowsAsync(IDictionary<LocalPackageInfo, List<string>> packageList, Dictionary<string, LicenseRow> cachedLicenses, SpdxLicenseData spdxLicenseData)
+        private async Task<Dictionary<string, LicenseRow>> ToLicenseRowsAsync(IEnumerable<PackageInfo> packageList, Dictionary<string, LicenseRow> cachedLicenses, SpdxLicenseData spdxLicenseData)
         {
             var licenseResolver = new LicenseResolver(spdxLicenseData, "", "");
 
             var rows = new Dictionary<string, LicenseRow>();
-            foreach (var package in packageList.OrderBy(p=>p.Key.Nuspec.GetTitle()))
+            foreach (var package in packageList.OrderBy(p=>p.LocalPackageInfo.Nuspec.GetTitle()))
             {
-                var nugetId = package.Key.Nuspec.GetId() + " : " + package.Key.Nuspec.GetVersion().Version;
+                var nugetId = package.LocalPackageInfo.Nuspec.GetId() + " : " + package.LocalPackageInfo.Nuspec.GetVersion().Version;
                 var licenseRow = new LicenseRow
                 {
                     Id = nugetId,
-                    Component = !string.IsNullOrEmpty(package.Key.Nuspec.GetTitle()) ? package.Key.Nuspec.GetTitle() : package.Key.Nuspec.GetId(),
-                    Project = string.Join(",", package.Value),
-                    Author = package.Key.Nuspec.GetAuthors(),
-                    LicenseUrl = !string.IsNullOrEmpty(package.Key.Nuspec.GetLicenseUrl()) ? package.Key.Nuspec.GetLicenseUrl() : package.Key.Nuspec.GetProjectUrl(),
+                    Component = !string.IsNullOrEmpty(package.LocalPackageInfo.Nuspec.GetTitle()) ? package.LocalPackageInfo.Nuspec.GetTitle() : package.LocalPackageInfo.Nuspec.GetId(),
+                    Project = string.Join(",", package.ProjectList),
+                    Author = package.LocalPackageInfo.Nuspec.GetAuthors(),
+                    LicenseUrl = !string.IsNullOrEmpty(package.LocalPackageInfo.Nuspec.GetLicenseUrl()) ? package.LocalPackageInfo.Nuspec.GetLicenseUrl() : package.LocalPackageInfo.Nuspec.GetProjectUrl(),
                     License = "Unknown",
-                    Version = package.Key.Nuspec.GetVersion().Version.ToString(),
+                    Version = package.LocalPackageInfo.Nuspec.GetVersion().Version.ToString(),
                     LicenseText = "",
                     SpdxLicenseId = "",
                     AccuracyOfLicense = AccuracyOfLicense.NotFound,
-                    RequireAcceptance = package.Key.Nuspec.GetRequireLicenseAcceptance()
+                    RequireAcceptance = package.LocalPackageInfo.Nuspec.GetRequireLicenseAcceptance()
                 };
 
                 //Check cache first

@@ -44,10 +44,12 @@
                 <TextBlock Grid.Column="1" Grid.Row="0" ></TextBlock>
                 <TextBlock Grid.Column="2" Grid.Row="0" Margin="10,0,0,0">Report Columns</TextBlock>
 
-                <RadioButton Grid.Column="0" Grid.Row="1" Margin="10,0,0,0" GroupName="ReportTypeGroup" Name="CsvRadioButton" >Csv</RadioButton>
-                <RadioButton Grid.Column="0" Grid.Row="2" Margin="10,0,0,0" GroupName="ReportTypeGroup" Name="HtmlRadioButton">Html</RadioButton>
-                <RadioButton Grid.Column="0" Grid.Row="3" Margin="10,0,0,0" GroupName="ReportTypeGroup" Name="PdfRadioButton">Pdf</RadioButton>
-                <RadioButton Grid.Column="0" Grid.Row="4" Margin="10,0,0,0" GroupName="ReportTypeGroup" Name="WordRadioButton" Height="20">Word</RadioButton>
+                <RadioButton Grid.Column="0" Grid.Row="1" Margin="10,0,0,0" GroupName="ReportTypeGroup" Tag="Csv" Name="CsvRadioButton" >Csv</RadioButton>
+                <RadioButton Grid.Column="0" Grid.Row="2" Margin="10,0,0,0" GroupName="ReportTypeGroup" Tag="Html" Name="HtmlRadioButton">Html</RadioButton>
+                <RadioButton Grid.Column="0" Grid.Row="3" Margin="10,0,0,0" GroupName="ReportTypeGroup" Tag="Pdf" Name="PdfRadioButton">Pdf</RadioButton>
+                <RadioButton Grid.Column="0" Grid.Row="4" Margin="10,0,0,0" GroupName="ReportTypeGroup" Tag="Word" Name="WordRadioButton" Height="20">Word</RadioButton>
+
+                <CheckBox Grid.Column="0" Grid.Row="6" Margin="10,0,0,0" Tag="IncludeDependencies" Content="Include Dependencies" Name="IncludeDependenciesCheckBox" Height="20"></CheckBox>
 
             </Grid>
 

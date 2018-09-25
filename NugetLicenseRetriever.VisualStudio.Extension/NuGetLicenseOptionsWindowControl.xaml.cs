@@ -54,6 +54,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 reportGeneratorOptions.FileType = FileType.Csv;
                 reportGeneratorOptions.Path = ProjectSettings.ReportFileName;
                 reportGeneratorOptions.Columns = typeof(LicenseRow).GetProperties().Select(p => p.Name).ToList();
+                reportGeneratorOptions.IncludePackageDependencies = false;
             }
 
             //hack to make this work
@@ -66,6 +67,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
             {
                 var checkbox = new CheckBox
                 {
+                    Tag = column.Name,
                     Content = column.Name,
                     Name = column.Name + "CheckBox",
                     Margin = new Thickness(10, 0, 0, 0),
@@ -92,6 +94,8 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+
+            this.IncludeDependenciesCheckBox.IsChecked = reportGeneratorOptions.IncludePackageDependencies;
         }
 
        private void UpdateConfigurationSettingsStore(ReportGeneratorOptions reportGeneratorOptions)
@@ -120,17 +124,19 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
             foreach (CheckBox c in ReportColumnsGrid.Children.OfType<CheckBox>())
             {
                 if (c.IsChecked == true)
-                    reportGeneratorOptions.Columns.Add(c.Content.ToString());
+                    reportGeneratorOptions.Columns.Add(c.Tag.ToString());
             }
 
             foreach (RadioButton c in ReportColumnsGrid.Children.OfType<RadioButton>())
             {
                 if (c.IsChecked == true)
                 {
-                    reportGeneratorOptions.FileType = (FileType)Enum.Parse(typeof(FileType), c.Content.ToString());
+                    reportGeneratorOptions.FileType = (FileType)Enum.Parse(typeof(FileType), c.Tag.ToString());
                     break;
                 }
             }
+
+            reportGeneratorOptions.IncludePackageDependencies = (bool)this.IncludeDependenciesCheckBox.IsChecked;
 
             UpdateConfigurationSettingsStore(reportGeneratorOptions);
 

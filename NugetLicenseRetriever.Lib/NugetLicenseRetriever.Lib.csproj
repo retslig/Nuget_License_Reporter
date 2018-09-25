@@ -54,6 +54,8 @@
     <Compile Include="FileType.cs" />
     <Compile Include="LicenseResolver.cs" />
     <Compile Include="LicenseRow.cs" />
+    <Compile Include="PackageInfo.cs" />
+    <Compile Include="ProjectInfo.cs" />
     <Compile Include="ReportGeneratorOptions.cs" />
     <Compile Include="SpdxLicenseHelper.cs" />
     <Compile Include="ReportGenerator.cs" />

@@ -100,24 +100,8 @@ namespace NugetLicenseRetriever.Lib
                 Name = "MICROSOFT.NET LIBRARY",
                 KnownAliasUrls = new List<string>
                 {
-                    "http://www.microsoft.com/web/webpi/eula/net_library_eula_enu.htm"
-                },
-                StandardLicenseTemplate = "",
-                Text = "",
-                SpdxDetailsUrl = "",
-                IsDeprecatedLicenseId = false,
-                IsOsiApproved = false,
-                ReferenceNumber = "-1"
-            });
-
-            //MICROSOFT SOFTWARE LICENSE TERMS
-            //MICROSOFT.NET LIBRARY
-            licenses.Licenses.Add(new SpdxLicense
-            {
-                Id = "MICROSOFT.NET LIBRARY",
-                Name = "MICROSOFT.NET LIBRARY",
-                KnownAliasUrls = new List<string>
-                {
+                    "http://www.microsoft.com/web/webpi/eula/net_library_eula_enu.htm",
+                    "http://go.microsoft.com/fwlink/?LinkId=529443",
                     "http://go.microsoft.com/fwlink/?LinkId=329770",
                     "https://www.microsoft.com/net/dotnet_library_license.htm"
                 },

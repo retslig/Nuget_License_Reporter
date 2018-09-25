@@ -187,7 +187,8 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                     {
                         Path = ProjectSettings.ReportFileName,
                         Columns = typeof(LicenseRow).GetProperties().Select(p => p.Name).ToList(),
-                        FileType = FileType.Csv
+                        FileType = FileType.Csv,
+                        IncludePackageDependencies = false
                     };
                 }
 
@@ -199,11 +200,11 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 //Get nuget packages
                 var helper = new NugetHelper(logger);
                 //Todo: add more file types support.
-                var nugetPackageProjectDictionary =
-                    helper.GetNugetPackageProjectDictionary(installerServices, env?.Solution);
+                var nugetPackages =
+                    helper.GetNugetPackages(installerServices, env?.Solution, reportOptions.IncludePackageDependencies);
 
                 //First check if any NuGet packages are installed.
-                if (nugetPackageProjectDictionary != null && nugetPackageProjectDictionary.Any())
+                if (nugetPackages != null && nugetPackages.Any())
                 {
                     //Get spdx licenses
                     SpdxLicenseData spdxLicenseData;
@@ -229,7 +230,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                         await UpdateSpdxLicenseCacheAsync(spdxLicenseData, ProjectSettings.SpdxCacheFileName);
                     }
 
-                    await reportGenerator.GenerateAsync(nugetPackageProjectDictionary, licenseCache, spdxLicenseData);
+                    await reportGenerator.GenerateAsync(nugetPackages, licenseCache, spdxLicenseData);
                     await UpdateLicenseCacheAsync(licenseCache, ProjectSettings.LicenseCacheFileName);
 
                     message = "Nuget Package License Report Generated";

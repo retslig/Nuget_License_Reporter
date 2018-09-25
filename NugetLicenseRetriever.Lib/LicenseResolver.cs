@@ -133,7 +133,20 @@ namespace NugetLicenseRetriever.Lib
 
                     if (!response.Item1)
                     {
-                        throw new Exception(response.Item2);
+                        return new Tuple<AccuracyOfLicense, SpdxLicense>(
+                            AccuracyOfLicense.NotFound,
+                            new SpdxLicense
+                            {
+                                Id = "Unknown",
+                                Name = "Unknown",
+                                KnownAliasUrls = new List<string>(),
+                                StandardLicenseTemplate = response.Item2,
+                                Text = response.Item2,
+                                SpdxDetailsUrl = "",
+                                ReferenceNumber = "-1",
+                                IsOsiApproved = false,
+                                IsDeprecatedLicenseId = false
+                            });
                     }
 
                     jtoken = JObject.Parse(response.Item2);

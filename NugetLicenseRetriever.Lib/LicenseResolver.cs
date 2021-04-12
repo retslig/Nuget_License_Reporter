@@ -77,12 +77,14 @@ namespace NugetLicenseRetriever.Lib
                     if (uri.AbsoluteUri.Contains(item.Id))
                     {
                         //Chance of being the correct license: High
+                        item.Text = result.Item2.Text;
                         return Task.FromResult(new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.High, item));
                     }
 
                     if (item.KnownAliasUrls.Contains(uri.AbsoluteUri))
                     {
                         //Chance of being the correct license: Pretty Likely
+                        item.Text = result.Item2.Text;
                         return Task.FromResult(new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.VeryLikely, item));
                     }
 

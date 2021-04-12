@@ -13,8 +13,8 @@ namespace NugetLicenseRetriever.Console
         static void Main(string[] args)
         {
 
-            var heler = new SpdxLicenseHelper(NullLogger.Instance);
-            var data = heler.GetLicencesAsync(false);
+            var helper = new SpdxLicenseHelper(NullLogger.Instance);
+            var data = helper.GetLicencesAsync(false).Result;
         }
     }
 }

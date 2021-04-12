@@ -61,8 +61,8 @@ namespace NugetLicenseRetriever.Lib
                             {
                                 foreach (var propertyName in _options.Columns)
                                 {
-                                    var property = properties.First(p => p.Name == propertyName);
-                                    var value = property.GetValue(license.Value, null);
+                                    var property = properties.FirstOrDefault(p => p.Name == propertyName);
+                                    var value = property?.GetValue(license.Value, null);
                                     helper.WriteField(value?.ToString(), true);
                                 }
                                 helper.NextRecord();
@@ -110,7 +110,7 @@ namespace NugetLicenseRetriever.Lib
                 {
                     Id = nugetId,
                     Component = !string.IsNullOrEmpty(package.LocalPackageInfo.Nuspec.GetTitle()) ? package.LocalPackageInfo.Nuspec.GetTitle() : package.LocalPackageInfo.Nuspec.GetId(),
-                    Project = string.Join(",", package.ProjectList),
+                    Project = package.ProjectList.Aggregate("", (accumulator, piece) => (accumulator.Length > 0 ? "," : "") + piece.Name),//string.Join(",", package.ProjectList),
                     Author = package.LocalPackageInfo.Nuspec.GetAuthors(),
                     LicenseUrl = !string.IsNullOrEmpty(package.LocalPackageInfo.Nuspec.GetLicenseUrl()) ? package.LocalPackageInfo.Nuspec.GetLicenseUrl() : package.LocalPackageInfo.Nuspec.GetProjectUrl(),
                     License = "Unknown",

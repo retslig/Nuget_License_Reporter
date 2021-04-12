@@ -206,7 +206,7 @@ namespace NugetLicenseRetriever.Lib
             {
                 foreach (var license in licenseData.Licenses)
                 {
-                    var tempJson = await GetHttpAsync(license.SpdxDetailsUrl);
+                    var tempJson = await GetHttpAsync(license.SpdxApiUrl);
                     var jtoken = JObject.Parse(tempJson);
                     license.Text = jtoken["licenseText"].ToString();
                     license.StandardLicenseTemplate = jtoken["standardLicenseTemplate"].ToString();

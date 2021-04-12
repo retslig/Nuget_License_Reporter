@@ -81,7 +81,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                         select new ProjectInfo
                         {
                             Name = envProject.Name,
-                            FrameworkName = envProject.Properties.Item("TargetFrameworkMonikers")?.Value.ToString()
+                            FrameworkName = envProject.Properties.Item("TargetFrameworkMoniker")?.Value.ToString()
                         }
                     );
 

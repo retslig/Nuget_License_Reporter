@@ -44,6 +44,22 @@ namespace NugetLicenseRetriever.Lib
         [JsonProperty("referenceNumber")]
         public string ReferenceNumber { get; set; }
 
+        private string _spdxReferenceUrl;
+
+        [JsonProperty("reference")]
+        public string SpdxApiUrl
+        {
+            get { return _spdxReferenceUrl; }
+            set
+            {
+                if (value != null && !value.Contains("https"))
+                {
+                    _spdxReferenceUrl = "https://spdx.org/licenses/" + value.Substring(2);
+                }
+                else { _spdxReferenceUrl = value; }
+            }
+        }
+
         [JsonProperty("detailsUrl")]
         public string SpdxDetailsUrl { get; set; }
 

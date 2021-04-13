@@ -94,39 +94,47 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                     {
                         var type = LocalFolderUtility.GetLocalFeedType(installedPackage.InstallPath, _logger);
                         var package = BuildPackageInfo(type, installedPackage.InstallPath, installedPackage.Id, version, projects);
-                        packageList.Add(package);
-
-                        if (includePackageDependencies)
+                        if (package != null)
                         {
-                            var dependenciesPackageList = new List<PackageInfo>();
-                            var frameworks = projects.Select(p => p.FrameworkName).ToList();
-                            foreach (var dependencyGroup in package.LocalPackageInfo.Nuspec.GetDependencyGroups())
+                            packageList.Add(package);
+
+                            if (includePackageDependencies)
                             {
-                                if (frameworks.Contains(dependencyGroup.TargetFramework.DotNetFrameworkName))
+                                var dependenciesPackageList = new List<PackageInfo>();
+                                var frameworks = projects.Select(p => p.FrameworkName).ToList();
+                                foreach (var dependencyGroup in package.LocalPackageInfo.Nuspec.GetDependencyGroups())
                                 {
-                                    foreach (var packageDependency in dependencyGroup.Packages)
+                                    if (frameworks.Contains(dependencyGroup.TargetFramework.DotNetFrameworkName))
                                     {
-                                        var depVersion = NuGet.Versioning.NuGetVersion.Parse(packageDependency.VersionRange.OriginalString);
-                                        var basePath = Path.GetFullPath(Path.Combine(installedPackage.InstallPath, @"..\..\"));
-                                        var newPath = Path.Combine(basePath, packageDependency.Id, depVersion.ToString());
-                                        var dependencyPackage = BuildPackageInfo(type, newPath, packageDependency.Id, depVersion, projects);
-                                        if (dependencyPackage != null)
+                                        foreach (var packageDependency in dependencyGroup.Packages)
                                         {
-                                            dependenciesPackageList.Add(dependencyPackage);
-                                        }
-                                        else
-                                        {
-                                            Debug.WriteLine($"Could not locate dependency package {packageDependency.Id} version {depVersion}...");
-                                            _logger.Log(LogLevel.Warning,$"Could not locate dependency package {packageDependency.Id} version {depVersion}...");
+                                            var depVersion = NuGet.Versioning.NuGetVersion.Parse(packageDependency.VersionRange.OriginalString);
+                                            var basePath = Path.GetFullPath(Path.Combine(installedPackage.InstallPath, @"..\..\"));
+                                            var newPath = Path.Combine(basePath, packageDependency.Id, depVersion.ToString());
+                                            var dependencyPackage = BuildPackageInfo(type, newPath, packageDependency.Id, depVersion, projects);
+                                            if (dependencyPackage != null)
+                                            {
+                                                dependenciesPackageList.Add(dependencyPackage);
+                                            }
+                                            else
+                                            {
+                                                Debug.WriteLine($"Could not locate dependency package {packageDependency.Id} version {depVersion}...");
+                                                _logger.Log(LogLevel.Warning, $"Could not locate dependency package {packageDependency.Id} version {depVersion}...");
+                                            }
                                         }
                                     }
                                 }
-                            }
 
-                            if (dependenciesPackageList.Any())
-                            {
-                                packageList.AddRange(dependenciesPackageList);
+                                if (dependenciesPackageList.Any())
+                                {
+                                    packageList.AddRange(dependenciesPackageList);
+                                }
                             }
+                        }                            
+                        else
+                        {
+                            Debug.WriteLine($"Could not locate package {installedPackage.Id} version {version}...");
+                            _logger.Log(LogLevel.Warning, $"Could not locate package {installedPackage.Id} version {version}...");
                         }
                     }
                 }
@@ -167,7 +175,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 default:
                 {
                     Debug.WriteLine($"Unknown Type:{type}");
-                    throw new NotImplementedException($"Unknown Type:{type}");
+                    return null;
                 }
             }
         }

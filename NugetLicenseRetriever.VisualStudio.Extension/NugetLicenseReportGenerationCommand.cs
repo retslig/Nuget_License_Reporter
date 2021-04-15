@@ -156,7 +156,7 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 this.ToString(),
                 "GenerateReportAsync was invoked"
             );
-
+            
             try
             {
                 var settingsManager = await GetSettingsManagerAsync();
@@ -167,6 +167,8 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 var licenseCache = await GetLicenseCacheAsync(ProjectSettings.LicenseCacheFileName);
                 var installerServices = await GetIVsPackageInstallerServicesAsync();
                 ReportGeneratorOptions reportOptions;
+
+
 
                 if (userSettingsStore.CollectionExists(ProjectSettings.CollectionName) &&
                     userSettingsStore.PropertyExists(ProjectSettings.CollectionName,
@@ -245,12 +247,24 @@ namespace NugetLicenseRetriever.VisualStudio.Extension
                 message = exception.Message + " This may be caused by not doing a restore on your Nuget packages.";
                 logtype = __ACTIVITYLOG_ENTRYTYPE.ALE_ERROR;
                 messageType = OLEMSGICON.OLEMSGICON_WARNING;
+
+                log.LogEntry(
+                    (UInt32)logtype,
+                    this.ToString(),
+                    string.Concat(exception.StackTrace, " ", message)
+                );
             }
             catch (Exception exception)
             {
                 message = exception.Message;
                 logtype = __ACTIVITYLOG_ENTRYTYPE.ALE_ERROR;
                 messageType = OLEMSGICON.OLEMSGICON_WARNING;
+
+                log.LogEntry(
+                    (UInt32)logtype,
+                    this.ToString(),
+                    string.Concat(exception.StackTrace, " ", message)
+                );
             }
 
             ThreadHelper.ThrowIfNotOnUIThread();

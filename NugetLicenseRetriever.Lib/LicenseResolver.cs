@@ -60,53 +60,45 @@ namespace NugetLicenseRetriever.Lib
                 {
                     Id = "Unknown",
                     Name = "Unknown",
-                    KnownAliasUrls = new List<string> {uri.AbsoluteUri},
-                    StandardLicenseTemplate = content.Replace("\r", "").Replace("\n", ""),
-                    Text = content.Replace("\r", "").Replace("\n", ""),
+                    KnownAliasUrls = new List<string> { uri.AbsoluteUri },
+                    StandardLicenseTemplate = content,
+                    Text = content,
                     SpdxDetailsUrl = "",
                     ReferenceNumber = "-1",
                     IsOsiApproved = false,
                     IsDeprecatedLicenseId = false
                 });
 
-            if (!string.IsNullOrEmpty(content))
+            foreach (var item in _spdxLicenseData.Licenses)
             {
-                foreach (var item in _spdxLicenseData.Licenses)
+                //If we find High or PrettyLikely return right away as we are confident. Otherwise keeping looping hoping for a better match.
+                if (uri.AbsoluteUri.Contains(item.Id))
                 {
-                    //If we find High or PrettyLikely return right away as we are confident. Otherwise keeping looping hoping for a better match.
-                    if (uri.AbsoluteUri.Contains(item.Id))
-                    {
-                        //Chance of being the correct license: High
-                        item.Text = result.Item2.Text;
-                        return Task.FromResult(new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.High, item));
-                    }
+                    if (item?.Text?.Length < 1) { item.Text = result?.Item2?.Text; }
+                    //Chance of being the correct license: High
+                    return Task.FromResult(new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.High, item));
+                }
 
-                    if (item.KnownAliasUrls.Contains(uri.AbsoluteUri))
-                    {
-                        //Chance of being the correct license: Pretty Likely
-                        item.Text = result.Item2.Text;
-                        return Task.FromResult(new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.VeryLikely, item));
-                    }
+                if (item.KnownAliasUrls.Contains(uri.AbsoluteUri))
+                {
+                    if (item?.Text?.Length < 1) { item.Text = result?.Item2?.Text; }
+                    //Chance of being the correct license: Pretty Likely
+                    return Task.FromResult(new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.VeryLikely, item));
+                }
 
-                    if (item.KnownAliasUrls.Any(content.Contains))
-                    {
-                        //Chance of being the correct license: decent chance
-                        result = new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.DecentChance, item);
-                    }
+                if (item.KnownAliasUrls.Any(content.Contains))
+                {
+                    //Chance of being the correct license: decent chance
+                    result = new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.DecentChance, item);
+                }
 
-                    if (content.Contains(item.Name))
+                if (content != null && content.Contains(item.Name))
+                {
+                    if (result.Item1 >= AccuracyOfLicense.Maybe)
                     {
-                        if (result.Item1 >= AccuracyOfLicense.Maybe)
-                        {
-                            //Chance of being the correct license: maybe
-                            result = new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.Maybe, item);
-                        }
+                        //Chance of being the correct license: maybe
+                        result = new Tuple<AccuracyOfLicense, SpdxLicense>(AccuracyOfLicense.Maybe, item);
                     }
-
-                    //if (html.Contains(item.Id))
-                    //{
-                    //    return item;
-                    //}
                 }
             }
 

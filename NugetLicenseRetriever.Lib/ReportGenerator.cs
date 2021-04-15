@@ -59,11 +59,20 @@ namespace NugetLicenseRetriever.Lib
                             //Write values
                             foreach (var license in licenses)
                             {
+                                //Get rid of new lines as they are bad in CSV and other report layouts.
+                                license.Value.LicenseText = license.Value?.LicenseText.Replace("\r", "").Replace("\n", "").Replace(",", " ");
+
+                                //
+                                if (license.Value?.LicenseText?.Length >= 35000)
+                                {
+                                    license.Value.LicenseText = license.Value.LicenseText.Substring(0, 35000);
+                                }
+
                                 foreach (var propertyName in _options.Columns)
                                 {
                                     var property = properties.FirstOrDefault(p => p.Name == propertyName);
                                     var value = property?.GetValue(license.Value, null);
-                                    helper.WriteField(value?.ToString(), true);
+                                    helper.WriteField(value?.ToString());
                                 }
                                 helper.NextRecord();
                             }

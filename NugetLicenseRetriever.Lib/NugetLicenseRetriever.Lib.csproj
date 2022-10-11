@@ -67,7 +67,7 @@
       <Version>7.1.1</Version>
     </PackageReference>
     <PackageReference Include="NuGet.Protocol">
-      <Version>4.7.0-preview1-4986</Version>
+      <Version>4.9.6+a32bce39889f724fbd11cfd12e946f802168b583</Version>
     </PackageReference>
     <PackageReference Include="System.IO">
       <Version>4.3.0</Version>
